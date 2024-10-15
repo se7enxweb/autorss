@@ -1,0 +1,28 @@
+{
+    "name": "se7enxweb/autorss",
+    "description": "Auto RSS is a simple eZ Publish Platform (Legacy) workflow extension which provides a simple set of tools for rss feed creation via workflow event. Great for advanced developers!",
+    "type": "ezpublish-legacy-extension",
+    "keywords": [ "eZ Publish", "eZ Publish Legacy", "eZ Publish Platform", "rss", "feed", "creation", "extension", "workflow event" ],
+    "homepage": "https://github.com/se7enxweb/autorss",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name" : "7x",
+            "homepage": "https://se7enx.com",
+            "email": "info@se7enx.com",
+            "role": "Developer"
+        },
+	{
+            "name" : "Kristof Coomans",
+            "role": "Author"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=5.0.0",
+        "se7enxweb/ezpublish-legacy-installer": "*"
+    },
+    "extra": {
+        "ezpublish-legacy-extension-name": "autorss"
+    }
+}
