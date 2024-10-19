@@ -2,8 +2,8 @@
 //
 // ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 // SOFTWARE NAME: eZ Publish Auto RSS extension
-// SOFTWARE RELEASE: 1.x
-// COPYRIGHT NOTICE: Copyright (C) 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
+// SOFTWARE RELEASE: 1.1.1
+// COPYRIGHT NOTICE: Copyright (C) 1999 - 2024 7x and 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
 // SOFTWARE LICENSE: GNU General Public License v2.0
 // NOTICE: >
 //   This program is free software; you can redistribute it and/or
@@ -24,18 +24,15 @@
 // ## END COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 //
 
-include_once( 'kernel/classes/ezworkflowtype.php' );
-include_once( 'kernel/classes/ezcontentobject.php' );
-
 class AutoRSSType extends eZWorkflowEventType
 {
-    function AutoRSSType()
+    function __construct()
     {
-        $this->eZWorkflowEventType( 'autorss', ezi18n( 'extension/autorss', 'Auto RSS' ) );
+        parent::__construct( 'autorss', ezpI18n::tr( 'extension/autorss', 'Auto RSS' ) );
         $this->setTriggerTypes( array( 'content' => array( 'publish' => array( 'after' ) ) ) );
     }
 
-    function &attributeDecoder( &$event, $attr )
+    function &attributeDecoder( $event, $attr )
     {
         $retValue = null;
         switch( $attr )
@@ -68,7 +65,7 @@ class AutoRSSType extends eZWorkflowEventType
         return array( 'path_offset', 'attribute_mappings', 'defer' );
     }
 
-    function fetchHTTPInput( &$http, $base, &$event )
+    function fetchHTTPInput( $http, $base, $event )
     {
         // this condition can be removed when this issue if fixed: http://issues.ez.no/10685
         if ( count( $_POST ) > 0 )
@@ -107,35 +104,52 @@ class AutoRSSType extends eZWorkflowEventType
         }
     }
 
-    function execute( &$process, &$event )
+    function execute( $process, $event )
     {
         $parameters = $process->attribute( 'parameter_list' );
         $object =& eZContentObject::fetch( $parameters['object_id'] );
 
         if ( $this->attributeDecoder( $event, 'defer' ) )
         {
-            include_once( 'lib/ezutils/classes/ezsys.php' );
-            if ( eZSys::isShellExecution() == false )
+            if ( eZSys::isShellExecution() === false )
             {
-                return EZ_WORKFLOW_TYPE_STATUS_DEFERRED_TO_CRON_REPEAT;
+                return eZWorkflowType::STATUS_DEFERRED_TO_CRON_REPEAT;
             }
         }
 
         $mainNode =& $object->attribute( 'main_node' );
+	$mainNodeID =& $mainNode->attribute( 'node_id' );
+
+	/*
+	$childNode = eZContentObjectTreeNode::subTreeByNodeID( array( 'ClassFilterType' => 'include',
+                             'ClassFilterArray' => array( 'category'), 'Limit' => 1 ), $mainNodeID )[0];
+
+        */
+	$childNode = $mainNode->attribute('parent');
+
         $attributeMappings = $this->attributeDecoder( $event, 'attribute_mappings' );
         $pathOffset = $this->attributeDecoder( $event, 'path_offset' );
-        $this->createFeedIfNeeded( $mainNode, $attributeMappings, $pathOffset );
 
-        return EZ_WORKFLOW_TYPE_STATUS_ACCEPTED;
+        //$this->createFeedIfNeeded( $mainNode, $attributeMappings, $pathOffset );
+	//$this->createFeedIfNeeded( $childNode, $mainNode, $attributeMappings, $pathOffset );
+	$this->createFeedIfNeeded( $mainNode, $childNode, $attributeMappings, $pathOffset );
+
+        return eZWorkflowType::STATUS_ACCEPTED;
     }
 
-    function createFeedIfNeeded( $node, $attributeMappings, $pathOffset )
+    function createFeedIfNeeded( $node, $parentNode, $attributeMappings, $pathOffset )
     {
-        include_once( 'kernel/classes/ezrssexport.php' );
-        include_once( 'kernel/classes/ezrssexportitem.php' );
+	// include_once( 'kernel/classes/ezrssexport.php' );
+        // include_once( 'kernel/classes/ezrssexportitem.php' );
 
         $name = $node->attribute( 'node_id' );
-        $rssExport = eZRSSExport::fetchByName( $name );
+	$nodeID = $node->attribute( 'node_id' );
+	$name = $node->attribute( 'name' );
+
+	//$nameURI = strtolower( "user-submitted-$name" );
+	$nameURI = strtolower( "$name" );
+
+        $rssExport = eZRSSExport::fetchByName( $nameURI );
 
         if ( is_object( $rssExport ) )
         {
@@ -147,7 +161,6 @@ class AutoRSSType extends eZWorkflowEventType
 
         $rssExportID = $rssExport->attribute( 'id' );
 
-        include_once( 'lib/ezutils/classes/ezini.php' );
         $ini =& eZINI::instance( 'autorss.ini' );
 
         foreach ( $attributeMappings as $mappingIdentifier )
@@ -193,13 +206,17 @@ class AutoRSSType extends eZWorkflowEventType
         }
 
         $rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) );
+	//$rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
+	//$rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
+	//$rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $node->attribute( 'name' ) );
+
         $rssExport->setAttribute( 'url', $ini->variable( 'GeneralSettings', 'SiteURL' ) );
-        $rssExport->setAttribute( 'description', '' );
-        $rssExport->setAttribute( 'rss_version', '2.0' );
-        $rssExport->setAttribute( 'number_of_objects', 50 );
+        $rssExport->setAttribute( 'description', 'Feed was automatically created via AutoRSS!' ); //TODO Add support for feed description abstraction
+        $rssExport->setAttribute( 'rss_version', 'ATOM' );
+        $rssExport->setAttribute( 'number_of_objects', 100 );
         $rssExport->setAttribute( 'active', 1 );
 
-        $rssExport->setAttribute( 'access_url', $name );
+        $rssExport->setAttribute( 'access_url', $nameURI );
         $rssExport->setAttribute( 'main_node_only', 1 );
 
         // argument true will store it with status valid instead of draft
@@ -211,6 +228,6 @@ class AutoRSSType extends eZWorkflowEventType
     }
 }
 
-eZWorkflowEventType::registerType( 'autorss', 'AutoRSSType' );
+eZWorkflowEventType::registerEventType( 'autorss', 'AutoRSSType' );
 
 ?>
