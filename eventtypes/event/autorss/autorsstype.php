@@ -2,7 +2,7 @@
 //
 // ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 // SOFTWARE NAME: eZ Publish Auto RSS extension
-// SOFTWARE RELEASE: 1.1.1
+// SOFTWARE RELEASE: 1.0.1
 // COPYRIGHT NOTICE: Copyright (C) 1999 - 2024 7x and 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
 // SOFTWARE LICENSE: GNU General Public License v2.0
 // NOTICE: >
@@ -26,13 +26,13 @@
 
 class AutoRSSType extends eZWorkflowEventType
 {
-    function __construct()
+    public function __construct()
     {
         parent::__construct( 'autorss', ezpI18n::tr( 'extension/autorss', 'Auto RSS' ) );
         $this->setTriggerTypes( array( 'content' => array( 'publish' => array( 'after' ) ) ) );
     }
 
-    function &attributeDecoder( $event, $attr )
+    public function &attributeDecoder( $event, $attr )
     {
         $retValue = null;
         switch( $attr )
@@ -60,12 +60,12 @@ class AutoRSSType extends eZWorkflowEventType
         return $retValue;
     }
 
-    function typeFunctionalAttributes()
+    public function typeFunctionalAttributes()
     {
         return array( 'path_offset', 'attribute_mappings', 'defer' );
     }
 
-    function fetchHTTPInput( $http, $base, $event )
+    public function fetchHTTPInput( $http, $base, $event )
     {
         // this condition can be removed when this issue if fixed: http://issues.ez.no/10685
         if ( count( $_POST ) > 0 )
@@ -104,7 +104,7 @@ class AutoRSSType extends eZWorkflowEventType
         }
     }
 
-    function execute( $process, $event )
+    public function execute( $process, $event )
     {
         $parameters = $process->attribute( 'parameter_list' );
         $object =& eZContentObject::fetch( $parameters['object_id'] );
@@ -119,37 +119,36 @@ class AutoRSSType extends eZWorkflowEventType
 
         $mainNode =& $object->attribute( 'main_node' );
 	$mainNodeID =& $mainNode->attribute( 'node_id' );
+	$mainNodeParentNode = $mainNode->attribute( 'parent' );
 
-	/*
-	$childNode = eZContentObjectTreeNode::subTreeByNodeID( array( 'ClassFilterType' => 'include',
+	/* $childNode = eZContentObjectTreeNode::subTreeByNodeID( array( 'ClassFilterType' => 'include',
                              'ClassFilterArray' => array( 'category'), 'Limit' => 1 ), $mainNodeID )[0];
-
         */
-	$childNode = $mainNode->attribute('parent');
+
 
         $attributeMappings = $this->attributeDecoder( $event, 'attribute_mappings' );
         $pathOffset = $this->attributeDecoder( $event, 'path_offset' );
 
-        //$this->createFeedIfNeeded( $mainNode, $attributeMappings, $pathOffset );
-	//$this->createFeedIfNeeded( $childNode, $mainNode, $attributeMappings, $pathOffset );
-	$this->createFeedIfNeeded( $mainNode, $childNode, $attributeMappings, $pathOffset );
+        // $this->createFeedIfNeeded( $childNode, $mainNodeParentNode, $attributeMappings, $pathOffset );
+	$this->createFeedIfNeeded( $mainNode, $mainNodeParentNode, $attributeMappings, $pathOffset );
 
         return eZWorkflowType::STATUS_ACCEPTED;
     }
 
-    function createFeedIfNeeded( $node, $parentNode, $attributeMappings, $pathOffset )
+    static public function createFeedIfNeeded( $node, $parentNode, $attributeMappings, $pathOffset )
     {
 	// include_once( 'kernel/classes/ezrssexport.php' );
-        // include_once( 'kernel/classes/ezrssexportitem.php' );
+	// include_once( 'kernel/classes/ezrssexportitem.php' );
 
-        $name = $node->attribute( 'node_id' );
+	// $name = $node->attribute( 'node_id' );
+	// $name = $parentNode->object()->attribute( 'name' );
+
 	$nodeID = $node->attribute( 'node_id' );
-	$name = $node->attribute( 'name' );
+	$name = $node->object()->attribute( 'name' );
 
-	//$nameURI = strtolower( "user-submitted-$name" );
-	$nameURI = strtolower( "$name" );
+	$nameURI = "user-submitted-" . implode( '-', explode( ' ', strtolower( $name ) ) );
 
-        $rssExport = eZRSSExport::fetchByName( $nameURI );
+	$rssExport = eZRSSExport::fetchByName( $nameURI );
 
         if ( is_object( $rssExport ) )
         {
@@ -162,8 +161,9 @@ class AutoRSSType extends eZWorkflowEventType
         $rssExportID = $rssExport->attribute( 'id' );
 
         $ini =& eZINI::instance( 'autorss.ini' );
+	$numberOfFeedItems = 250; //TODO Convert to ini setting
 
-        foreach ( $attributeMappings as $mappingIdentifier )
+	foreach ( $attributeMappings as $mappingIdentifier )
         {
             $mappingGroup = 'Mapping_' . $mappingIdentifier;
             if ( !$ini->hasGroup( $mappingGroup ) )
@@ -205,15 +205,16 @@ class AutoRSSType extends eZWorkflowEventType
             $titleParts = array_slice( $titleParts, $pathOffset );
         }
 
-        $rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) );
-	//$rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
-	//$rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
-	//$rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $node->attribute( 'name' ) );
+	// $rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
+	// $rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $node->attribute( 'name' ) . ' / Submitted' );
+	// $rssExport->setAttribute( 'title', 'User Submitted Feed' . ' / ' . $parentNode->attribute( 'name' ) );
+
+	$rssExport->setAttribute( 'title', implode( ' / ', $titleParts ) . ' / ' . $node->attribute( 'name' ) );
 
         $rssExport->setAttribute( 'url', $ini->variable( 'GeneralSettings', 'SiteURL' ) );
-        $rssExport->setAttribute( 'description', 'Feed was automatically created via AutoRSS!' ); //TODO Add support for feed description abstraction
+        $rssExport->setAttribute( 'description', 'Feed of User Submitted Content Submitted to ' . $ini->variable( 'GeneralSettings', 'SiteURL' ) );
         $rssExport->setAttribute( 'rss_version', 'ATOM' );
-        $rssExport->setAttribute( 'number_of_objects', 100 );
+        $rssExport->setAttribute( 'number_of_objects', $numberOfFeedItems );
         $rssExport->setAttribute( 'active', 1 );
 
         $rssExport->setAttribute( 'access_url', $nameURI );

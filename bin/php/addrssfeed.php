@@ -3,7 +3,7 @@
 //
 // ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 // SOFTWARE NAME: eZ Publish Auto RSS extension
-// SOFTWARE RELEASE: 1.x
+// SOFTWARE RELEASE: 1.1.1
 // COPYRIGHT NOTICE: Copyright (C) 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
 // SOFTWARE LICENSE: GNU General Public License v2.0
 // NOTICE: >
@@ -25,13 +25,12 @@
 // ## END COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 //
 
-include_once( 'kernel/classes/ezscript.php' );
-include_once( 'lib/ezutils/classes/ezcli.php' );
+require_once 'autoload.php';
 
 $cli =& eZCLI::instance();
 
 $scriptSettings = array();
-$scriptSettings['description'] = 'Add RSS feeds';
+$scriptSettings['description'] = 'Add RSS feeds based on content tree content by content type';
 $scriptSettings['use-session'] = true;
 $scriptSettings['use-modules'] = true;
 $scriptSettings['use-extensions'] = true;
@@ -41,11 +40,13 @@ $script->startup();
 
 $config = '[path-offset:]';
 $argumentConfig = '[content_class][attribute_mapping_identifier+]';
+
 $optionHelp = false;
 $arguments = false;
 $useStandardOptions = true;
 
 $options = $script->getOptions( $config, $argumentConfig, $optionHelp, $arguments, $useStandardOptions );
+
 $script->initialize();
 
 if ( count( $options['arguments'] ) < 2 )
@@ -54,11 +55,11 @@ if ( count( $options['arguments'] ) < 2 )
 }
 
 $pathOffset = isset( $options['path-offset'] ) && is_numeric( $options['path-offset'] ) ? $options['path-offset'] : 0;
+
 $args = $options['arguments'];
 
 $class = array_shift( $args );
 
-include_once( 'kernel/classes/ezcontentobjecttreenode.php' );
 $params = array(
     'ClassFilterType' => 'include',
     'ClassFilterArray' => array( $class ),
@@ -67,10 +68,9 @@ $params = array(
 
 $script->setIterationData( '.', '~' );
 
-$nodes =& eZContentObjectTreeNode::subtree( $params, 1 );
-
-include_once( 'extension/autorss/eventtypes/event/autorss/autorsstype.php' );
+$nodes =& eZContentObjectTreeNode::subTreeByNodeID( $params, 1 );
 $nodeCount = count( $nodes );
+
 $script->resetIteration( $nodeCount );
 $cli->output( '' );
 $cli->output( "Found $nodeCount nodes to investigate." );
@@ -78,7 +78,8 @@ $cli->output( '' );
 
 foreach ( $nodes as $node )
 {
-    $result = AutoRSSType::createFeedIfNeeded( $node, $args, $pathOffset );
+    $result = AutoRSSType::createFeedIfNeeded( $node, $node, $args, $pathOffset );
+
     $script->iterate( $cli, $result );
 }
 
