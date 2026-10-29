@@ -2,7 +2,7 @@
 <software>
     <metadata>
         <name>Auto RSS</name>
-        <version>1.1.1</version>
+        <version>1.1.2</version>
         <copyright>Copyright (C) 1998 - 2026 Exponential Foundation and 7x. All rights reserved. Copyright (C) 2007 - 2008 Kristof Coomans</copyright>
         <license>GNU General Public License 2.0</license>
         <info_url>https://github.com/se7enxweb/autorss</info_url>
