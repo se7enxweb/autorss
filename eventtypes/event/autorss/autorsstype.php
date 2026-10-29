@@ -3,7 +3,7 @@
 // ## BEGIN COPYRIGHT, LICENSE AND WARRANTY NOTICE ##
 // SOFTWARE NAME: eZ Publish Auto RSS extension
 // SOFTWARE RELEASE: 1.0.1
-// COPYRIGHT NOTICE: Copyright (C) 1999 - 2024 7x and 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
+// COPYRIGHT NOTICE: Copyright (C) 1998 - 2026 Exponential Foundation and 7x. All rights reserved. Copyright (C) 2007-2008 Kristof Coomans <http://blog.kristofcoomans.be>
 // SOFTWARE LICENSE: GNU General Public License v2.0
 // NOTICE: >
 //   This program is free software; you can redistribute it and/or
